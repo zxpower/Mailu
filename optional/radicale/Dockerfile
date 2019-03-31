@@ -1,8 +1,9 @@
-ARG DISTRO=alpine:3.8
-FROM $DISTRO
+ARG EDGE_DISTRO=alpine:edge
+FROM $EDGE_DISTRO
 
 RUN echo "@testing http://nl.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
- && apk add --no-cache radicale@testing py-dulwich@testing curl bash
+  && apk add --no-cache py3-dulwich@testing curl bash
+RUN pip3 install radicale
 
 COPY radicale.conf /radicale.conf
 
