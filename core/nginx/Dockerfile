@@ -1,13 +1,15 @@
-FROM alpine:3.8
+ARG DISTRO=alpine:3.8
+FROM $DISTRO
 # python3 shared with most images
 RUN apk add --no-cache \
-    python3 py3-pip git bash \
-  && pip3 install --upgrade pip
+    python3 py3-pip git bash
+# \ && pip3 install --upgrade pip
 # Shared layer between rspamd, postfix, dovecot, unbound and nginx
 RUN pip3 install git+https://github.com/usrpro/MailuStart.git#egg=mailustart
 # Image specific layers under this line
-RUN apk add --no-cache certbot nginx nginx-mod-mail openssl curl \
- && pip3 install idna requests watchdog
+RUN apk add --no-cache certbot nginx nginx-mod-mail openssl curl
+RUN apk del --no-cache py3-openssl
+RUN pip3 install idna requests watchdog
 
 COPY conf /conf
 COPY static /static
