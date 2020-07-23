@@ -1,5 +1,6 @@
 import os
-from mailustart import resolve
+
+from socrate import system
 
 DEFAULT_CONFIG = {
     # Specific to the admin UI
@@ -7,8 +8,8 @@ DEFAULT_CONFIG = {
     'BABEL_DEFAULT_LOCALE': 'en',
     'BABEL_DEFAULT_TIMEZONE': 'UTC',
     'BOOTSTRAP_SERVE_LOCAL': True,
-    'RATELIMIT_STORAGE_URL': 'redis://redis/2',
-    'QUOTA_STORAGE_URL': 'redis://redis/1',
+    'RATELIMIT_STORAGE_URL': '',
+    'QUOTA_STORAGE_URL': '',
     'DEBUG': False,
     'DOMAIN_REGISTRATION': False,
     'TEMPLATES_AUTO_RELOAD': True,
@@ -31,6 +32,7 @@ DEFAULT_CONFIG = {
     'POSTMASTER': 'postmaster',
     'TLS_FLAVOR': 'cert',
     'AUTH_RATELIMIT': '10/minute;1000/hour',
+    'AUTH_RATELIMIT_SUBNET': True,
     'DISABLE_STATISTICS': False,
     # Mail settings
     'DMARC_RUA': None,
@@ -46,18 +48,26 @@ DEFAULT_CONFIG = {
     'WEBSITE': 'https://mailu.io',
     'WEB_ADMIN': '/admin',
     'WEB_WEBMAIL': '/webmail',
+    'WEBMAIL': 'none',
     'RECAPTCHA_PUBLIC_KEY': '',
     'RECAPTCHA_PRIVATE_KEY': '',
     # Advanced settings
-    'PASSWORD_SCHEME': 'BLF-CRYPT',
+    'PASSWORD_SCHEME': 'PBKDF2',
+    'LOG_LEVEL': 'WARNING',
     # Host settings
     'HOST_IMAP': 'imap',
+    'HOST_LMTP': 'imap:2525',
     'HOST_POP3': 'imap',
     'HOST_SMTP': 'smtp',
+    'HOST_AUTHSMTP': 'smtp',
+    'HOST_ADMIN': 'admin',
+    'WEBMAIL': 'none',
     'HOST_WEBMAIL': 'webmail',
+    'HOST_WEBDAV': 'webdav:5232',
+    'HOST_REDIS': 'redis',
     'HOST_FRONT': 'front',
-    'HOST_AUTHSMTP': os.environ.get('HOST_SMTP', 'smtp'),
     'SUBNET': '192.168.203.0/24',
+    'SUBNET6': None,
     'POD_ADDRESS_RANGE': None
 }
 
@@ -74,11 +84,21 @@ class ConfigManager(dict):
     def __init__(self):
         self.config = dict()
 
-    def resolve_host(self):
-        self.config['HOST_IMAP'] = resolve(self.config['HOST_IMAP'])
-        self.config['HOST_POP3'] = resolve(self.config['HOST_POP3'])
-        self.config['HOST_AUTHSMTP'] = resolve(self.config['HOST_AUTHSMTP'])
-        self.config['HOST_SMTP'] = resolve(self.config['HOST_SMTP'])
+    def get_host_address(self, name):
+        # if MYSERVICE_ADDRESS is defined, use this
+        if '{}_ADDRESS'.format(name) in os.environ:
+            return os.environ.get('{}_ADDRESS'.format(name))
+        # otherwise use the host name and resolve it
+        return system.resolve_address(self.config['HOST_{}'.format(name)])
+
+    def resolve_hosts(self):
+        self.config["IMAP_ADDRESS"] = self.get_host_address("IMAP")
+        self.config["POP3_ADDRESS"] = self.get_host_address("POP3")
+        self.config["AUTHSMTP_ADDRESS"] = self.get_host_address("AUTHSMTP")
+        self.config["SMTP_ADDRESS"] = self.get_host_address("SMTP")
+        self.config["REDIS_ADDRESS"] = self.get_host_address("REDIS")
+        if self.config["WEBMAIL"] != "none":
+            self.config["WEBMAIL_ADDRESS"] = self.get_host_address("WEBMAIL")
 
     def __coerce_value(self, value):
         if isinstance(value, str) and value.lower() in ('true','yes'):
@@ -94,12 +114,15 @@ class ConfigManager(dict):
             key: self.__coerce_value(os.environ.get(key, value))
             for key, value in DEFAULT_CONFIG.items()
         })
-        self.resolve_host()
+        self.resolve_hosts()
 
         # automatically set the sqlalchemy string
         if self.config['DB_FLAVOR']:
             template = self.DB_TEMPLATES[self.config['DB_FLAVOR']]
             self.config['SQLALCHEMY_DATABASE_URI'] = template.format(**self.config)
+
+        self.config['RATELIMIT_STORAGE_URL'] = 'redis://{0}/2'.format(self.config['REDIS_ADDRESS'])
+        self.config['QUOTA_STORAGE_URL'] = 'redis://{0}/1'.format(self.config['REDIS_ADDRESS'])
         # update the app config itself
         app.config = self
 

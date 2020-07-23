@@ -3,6 +3,9 @@ from flask import current_app as app
 
 import re
 import urllib
+import ipaddress
+import socket
+import tenacity
 
 
 SUPPORTED_AUTH_METHODS = ["none", "plain"]
@@ -34,8 +37,14 @@ def handle_authentication(headers):
     # Authenticated user
     elif method == "plain":
         server, port = get_server(headers["Auth-Protocol"], True)
-        user_email = urllib.parse.unquote(headers["Auth-User"])
-        password = urllib.parse.unquote(headers["Auth-Pass"])
+        # According to RFC2616 section 3.7.1 and PEP 3333, HTTP headers should
+        # be ASCII and are generally considered ISO8859-1. However when passing
+        # the password, nginx does not transcode the input UTF string, thus
+        # we need to manually decode.
+        raw_user_email = urllib.parse.unquote(headers["Auth-User"])
+        user_email = raw_user_email.encode("iso8859-1").decode("utf8")
+        raw_password = urllib.parse.unquote(headers["Auth-Pass"])
+        password = raw_password.encode("iso8859-1").decode("utf8")
         ip = urllib.parse.unquote(headers["Client-Ip"])
         user = models.User.query.get(user_email)
         status = False
@@ -80,12 +89,26 @@ def extract_host_port(host_and_port, default_port):
 
 def get_server(protocol, authenticated=False):
     if protocol == "imap":
-        hostname, port = extract_host_port(app.config['HOST_IMAP'], 143)
+        hostname, port = extract_host_port(app.config['IMAP_ADDRESS'], 143)
     elif protocol == "pop3":
-        hostname, port = extract_host_port(app.config['HOST_POP3'], 110)
+        hostname, port = extract_host_port(app.config['POP3_ADDRESS'], 110)
     elif protocol == "smtp":
         if authenticated:
-            hostname, port = extract_host_port(app.config['HOST_AUTHSMTP'], 10025)
+            hostname, port = extract_host_port(app.config['AUTHSMTP_ADDRESS'], 10025)
         else:
-            hostname, port = extract_host_port(app.config['HOST_SMTP'], 25)
+            hostname, port = extract_host_port(app.config['SMTP_ADDRESS'], 25)
+    try:
+        # test if hostname is already resolved to an ip adddress
+        ipaddress.ip_address(hostname)
+    except:
+        # hostname is not an ip address - so we need to resolve it
+        hostname = resolve_hostname(hostname)
     return hostname, port
+
+@tenacity.retry(stop=tenacity.stop_after_attempt(100),
+                wait=tenacity.wait_random(min=2, max=5))
+def resolve_hostname(hostname):
+    """ This function uses system DNS to resolve a hostname.
+    It is capable of retrying in case the host is not immediately available
+    """
+    return socket.gethostbyname(hostname)

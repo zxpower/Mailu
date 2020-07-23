@@ -3,7 +3,7 @@
 $config = array();
 
 // Generals
-$config['db_dsnw'] = 'sqlite:////data/roundcube.db';
+$config['db_dsnw'] = getenv('DB_DSNW');;
 $config['temp_dir'] = '/tmp/';
 $config['des_key'] = getenv('SECRET_KEY');
 $config['cipher_method'] = 'AES-256-CBC';
@@ -16,7 +16,8 @@ $config['plugins'] = array(
     'zipdownload',
     'markasjunk',
     'managesieve',
-    'enigma'
+    'enigma',
+    'carddav'
 );
 
 $front = getenv('FRONT_ADDRESS') ? getenv('FRONT_ADDRESS') : 'front';
@@ -34,6 +35,10 @@ $config['smtp_pass'] = '%p';
 $config['managesieve_host'] = $imap;
 $config['managesieve_usetls'] = false;
 
+// Customization settings
+$config['support_url'] = getenv('WEB_ADMIN') ? '../..' . getenv('WEB_ADMIN') : '';
+$config['product_name'] = 'Mailu Webmail';
+
 // We access the IMAP and SMTP servers locally with internal names, SSL
 // will obviously fail but this sounds better than allowing insecure login
 // from the outter world
@@ -48,7 +53,10 @@ $config['smtp_conn_options'] = $ssl_no_check;
 $config['managesieve_conn_options'] = $ssl_no_check;
 
 // skin name: folder from skins/
-$config['skin'] = 'larry';
+$config['skin'] = 'elastic';
 
 // Enigma gpg plugin
 $config['enigma_pgp_homedir'] = '/data/gpg';
+
+// Set From header for DKIM signed message delivery reports
+$config['mdn_use_from'] = true;

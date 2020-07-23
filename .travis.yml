@@ -4,7 +4,14 @@ branches:
     - testing
     - '1.5'
     - '1.6'
+    - '1.7'
     - master
+    # version tags, e.g. 1.7.1
+    - /^1\.[567]\.\d+$/
+    # pre-releases, e.g. 1.8-pre1
+    - /^1\.8-pre\d+$/
+    # test branches, e.g. test-debian
+    - /^test-[\w\-\.]+$/
 
 sudo: required
 services: docker

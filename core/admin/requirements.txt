@@ -7,9 +7,10 @@ Flask-migrate
 Flask-script
 Flask-wtf
 Flask-debugtoolbar
-Flask-limiter
+limits
 redis
 WTForms-Components
+socrate
 passlib
 gunicorn
 tabulate
@@ -20,3 +21,5 @@ bcrypt
 tenacity
 mysqlclient
 psycopg2
+idna
+srslib

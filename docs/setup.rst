@@ -19,9 +19,7 @@ Prepare the environment
 
 Mailu images are designed to work on x86 or equivalent hardware, so it
 should run on pretty much any cloud server as long as enough power is
-provided. If you find yourself running Mailu on small hardware, e.g.
-Raspberry Pi or other platforms based on ARM, you will probably find
-some support from `MFAshby's fork`_.
+provided. For non x86 machines, see :ref:`rpi_build`
 
 You are free to choose any operating system that runs Docker (>= 1.11),
 then chose between various flavors including Docker Compose, Kubernetes
@@ -34,14 +32,13 @@ You should also have at least a DNS hostname and a DNS name for receiving
 emails. Some instructions are provided on the matter in the article
 :ref:`dns_setup`.
 
-.. _`MFAshby's fork`: https://github.com/MFAshby/Mailu
 
 Pick a Mailu version
 --------------------
 
 Mailu is shipped in multiple versions.
 
-- ``1.6`` features the most recent stable version for Mailu. This is the
+- ``1.7`` features the most recent stable version for Mailu. This is the
   recommended build for new setups, old setups should migrate when possible.
 
 - ``1.0``, ``1.1``, and other version branches feature old versions of Mailu
@@ -60,6 +57,10 @@ Perform the specific setup steps
 
 Specific setup steps are described per flavor (Compose, Kubernetes, etc.)
 and you should follow the steps after completing the requirements.
+
+After setting up your flavor, continue to the DNS setup instructions,
+additional steps in the admin dashboard will be needed to generate your
+DMARC and SPF/DKIM keys.
 
 Make sure that you test properly before going live!
 

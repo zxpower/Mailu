@@ -143,6 +143,11 @@
     # Advanced settings
     ###################################
 
+    # Create an admin account if it does not exist yet. It will also create the email domain for the account.
+    # INITIAL_ADMIN_ACCOUNT: "admin"
+    # INITIAL_ADMIN_DOMAIN: "example.com"
+    # INITIAL_ADMIN_PW: "s3cr3t"
+
     # Docker-compose project name, this will prepended to containers names.
     COMPOSE_PROJECT_NAME: "mailu"
 
@@ -164,5 +169,7 @@
     HOST_WEBMAIL: "webmail.mailu-mailserver.svc.cluster.local"
     HOST_ADMIN: "admin.mailu-mailserver.svc.cluster.local"
     HOST_WEBDAV: "webdav.mailu-mailserver.svc.cluster.local:5232"
-    HOST_ANTISPAM: "antispam.mailu-mailserver.svc.cluster.local:11332"
+    HOST_ANTISPAM_MILTER: "antispam.mailu-mailserver.svc.cluster.local:11332"
+    HOST_ANTISPAM_WEBUI: "antispam.mailu-mailserver.svc.cluster.local:11334"
+    HOST_ANTIVIRUS: "antivirus.mailu-mailserver.svc.cluster.local:3310"
     HOST_REDIS: "redis.mailu-mailserver.svc.cluster.local"

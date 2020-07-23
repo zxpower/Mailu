@@ -1,11 +1,23 @@
-FROM php:7.2-apache
+ARG ARCH=""
+ARG QEMU=other
+
+# NOTE: only add file if building for arm
+FROM ${ARCH}php:7.3-apache as build_arm
+ONBUILD COPY --from=balenalib/rpi-alpine:3.10 /usr/bin/qemu-arm-static /usr/bin/qemu-arm-static
+
+FROM ${ARCH}php:7.3-apache as build_other
+
+FROM build_${QEMU}
 #Shared layer between rainloop and roundcube
 RUN apt-get update && apt-get install -y \
-  python3 curl python3-pip git \
+  python3 curl python3-pip git python3-multidict \
   && rm -rf /var/lib/apt/lists \
   && echo "ServerSignature Off" >> /etc/apache2/apache2.conf
 
-ENV RAINLOOP_URL https://github.com/RainLoop/rainloop-webmail/releases/download/v1.12.1/rainloop-community-1.12.1.zip
+# Shared layer between nginx, dovecot, postfix, postgresql, rspamd, unbound, rainloop, roundcube
+RUN pip3 install socrate
+
+ENV RAINLOOP_URL https://github.com/RainLoop/rainloop-webmail/releases/download/v1.14.0/rainloop-community-1.14.0.zip
 
 RUN apt-get update && apt-get install -y \
       unzip python3-jinja2 \
@@ -21,8 +33,6 @@ RUN apt-get update && apt-get install -y \
  && chown -R www-data: * \
  && apt-get purge -y unzip \
  && rm -rf /var/lib/apt/lists
- 
- RUN pip3 install git+https://github.com/usrpro/MailuStart.git#egg=mailustart
 
 COPY include.php /var/www/html/include.php
 COPY php.ini /php.ini

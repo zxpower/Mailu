@@ -5,9 +5,9 @@ import glob
 import multiprocessing
 import logging as log
 import sys
-from mailustart import resolve, convert
 
-from podop import run_server
+from podop   import run_server
+from socrate import system, conf
 
 log.basicConfig(stream=sys.stderr, level=os.environ.get("LOG_LEVEL", "WARNING"))
 
@@ -21,14 +21,22 @@ def start_podop():
     ])
 
 # Actual startup script
-os.environ["FRONT_ADDRESS"] = resolve(os.environ.get("FRONT_ADDRESS", "front"))
-os.environ["REDIS_ADDRESS"] = resolve(os.environ.get("REDIS_ADDRESS", "redis"))
-os.environ["ADMIN_ADDRESS"] = resolve(os.environ.get("ADMIN_ADDRESS", "admin"))
+
+os.environ["FRONT_ADDRESS"] = system.get_host_address_from_environment("FRONT", "front")
+os.environ["REDIS_ADDRESS"] = system.get_host_address_from_environment("REDIS", "redis")
+os.environ["ADMIN_ADDRESS"] = system.get_host_address_from_environment("ADMIN", "admin")
+os.environ["ANTISPAM_WEBUI_ADDRESS"] = system.get_host_address_from_environment("ANTISPAM_WEBUI", "antispam:11334")
 if os.environ["WEBMAIL"] != "none":
-    os.environ["WEBMAIL_ADDRESS"] = resolve(os.environ.get("WEBMAIL_ADDRESS", "webmail"))
+    os.environ["WEBMAIL_ADDRESS"] = system.get_host_address_from_environment("WEBMAIL", "webmail")
 
 for dovecot_file in glob.glob("/conf/*.conf"):
-    convert(dovecot_file, os.path.join("/etc/dovecot", os.path.basename(dovecot_file)))
+    conf.jinja(dovecot_file, os.environ, os.path.join("/etc/dovecot", os.path.basename(dovecot_file)))
+
+os.makedirs("/conf/bin", exist_ok=True)
+for script_file in glob.glob("/conf/*.script"):
+    out_file = os.path.join("/conf/bin/", os.path.basename(script_file).replace('.script',''))
+    conf.jinja(script_file, os.environ, out_file)
+    os.chmod(out_file, 0o555)
 
 # Run Podop, then postfix
 multiprocessing.Process(target=start_podop).start()

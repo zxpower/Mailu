@@ -42,22 +42,44 @@ def advertise():
 @click.argument('localpart')
 @click.argument('domain_name')
 @click.argument('password')
+@click.option('-m', '--mode')
 @flask_cli.with_appcontext
-def admin(localpart, domain_name, password):
+def admin(localpart, domain_name, password, mode='create'):
     """ Create an admin user
+        'mode' can be:
+            - 'create' (default) Will try to create user and will raise an exception if present
+            - 'ifmissing': if user exists, nothing happens, else it will be created
+            - 'update': user is created or, if it exists, its password gets updated
     """
     domain = models.Domain.query.get(domain_name)
     if not domain:
         domain = models.Domain(name=domain_name)
         db.session.add(domain)
-    user = models.User(
-        localpart=localpart,
-        domain=domain,
-        global_admin=True
-    )
-    user.set_password(password)
-    db.session.add(user)
-    db.session.commit()
+
+    user = None
+    if mode == 'ifmissing' or mode == 'update':
+        email = '{}@{}'.format(localpart, domain_name)
+        user = models.User.query.get(email)
+
+        if user and mode == 'ifmissing':
+            print('user %s exists, not updating' % email)
+            return
+
+    if not user:
+        user = models.User(
+            localpart=localpart,
+            domain=domain,
+            global_admin=True
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        print("created admin user")
+    elif mode == 'update':
+        user.set_password(password)
+        db.session.commit()
+        print("updated admin password")
+
 
 
 @mailu.command()
@@ -82,6 +104,26 @@ def user(localpart, domain_name, password, hash_scheme=None):
     )
     user.set_password(password, hash_scheme=hash_scheme)
     db.session.add(user)
+    db.session.commit()
+
+
+@mailu.command()
+@click.argument('localpart')
+@click.argument('domain_name')
+@click.argument('password')
+@click.argument('hash_scheme', required=False)
+@flask_cli.with_appcontext
+def password(localpart, domain_name, password, hash_scheme=None):
+    """ Change the password of an user
+    """
+    email = '{0}@{1}'.format(localpart, domain_name)
+    user   = models.User.query.get(email)
+    if hash_scheme is None:
+        hash_scheme = app.config['PASSWORD_SCHEME']
+    if user:
+        user.set_password(password, hash_scheme=hash_scheme)
+    else:
+        print("User " + email + " not found.")
     db.session.commit()
 
 
@@ -135,7 +177,7 @@ def config_update(verbose=False, delete_objects=False):
     """sync configuration with data from YAML-formatted stdin"""
     import yaml
     import sys
-    new_config = yaml.load(sys.stdin)
+    new_config = yaml.safe_load(sys.stdin)
     # print new_config
     domains = new_config.get('domains', [])
     tracked_domains = set()

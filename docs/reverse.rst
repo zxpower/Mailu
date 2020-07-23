@@ -61,6 +61,7 @@ Because the admin interface is served as ``/admin`` and the Webmail as ``/webmai
 
     location /admin {
       proxy_pass https://localhost:8443/admin;
+      proxy_set_header Host $http_host;
     }
 
     location /main_app {
@@ -103,6 +104,7 @@ Here is an example configuration :
 
     location /admin {
       proxy_pass https://localhost:8443/admin;
+      proxy_set_header Host $http_host;
     }
 
   }
@@ -137,7 +139,7 @@ which will dump the certificates as ``PEM`` files, readable for Nginx. The ``fro
 
 To set this up, first set ``TLS_FLAVOR=mail`` in your ``.env``. This tells ``mailu/front`` not to try to request certificates using ``letsencrypt``,
 but to read provided certificates, and use them only for mail-protocols, not for ``HTTP``.
-Next, in your ``docker-compose.yml``, comment out the ``port`` lines of the ``front`` section for port ``…:80`` and ``…:440``.
+Next, in your ``docker-compose.yml``, comment out the ``port`` lines of the ``front`` section for port ``…:80`` and ``…:443``.
 Add the respective Traefik labels for your domain/configuration, like
 
 .. code-block:: yaml
@@ -154,7 +156,7 @@ If your Traefik is configured to automatically request certificates from *letsen
 and this is the ``DOMAIN`` in your ``.env``?
 To support that use-case, Traefik can request ``SANs`` for your domain. Lets add something like
 
-.. code-block:: guess
+.. code-block:: yaml
 
   [acme]
     [[acme.domains]]
@@ -176,20 +178,21 @@ One such example is ``mailu/traefik-certdumper``, which has been adapted for use
     # !!! Also don’t forget to add "TRAEFIK_DOMAIN=[...]" to your .env!
       - DOMAIN=$TRAEFIK_DOMAIN
     volumes:
+      # Folder, which contains the acme.json
       - "/data/traefik:/traefik"
-      - "$ROOT/certs:/output"
+      # Folder, where cert.pem and key.pem will be written
+      - "/data/mailu/certs:/output"
 
 
-
-Assuming you have ``volume-mounted`` your ``acme.json`` put to ``/data/traefik`` on your host. The dumper will then write out ``/data/traefik/ssl/your.doma.in.crt``
-and ``/data/traefik/ssl/your.doma.in.key`` whenever ``acme.json`` is updated. Yay! Now let’s mount this to our ``front`` container like:
+Assuming you have ``volume-mounted`` your ``acme.json`` put to ``/data/traefik`` on your host. The dumper will then write out ``/data/mailu/certs/cert.pem`` and ``/data/mailu/certs/key.pem`` whenever ``acme.json`` is updated.
+Yay! Now let’s mount this to our ``front`` container like:
 
 .. code-block:: yaml
 
     volumes:
-      - "$ROOT/overrides/nginx:/overrides"
-      - /data/traefik/ssl/$TRAEFIK_DOMAIN.crt:/certs/cert.pem
-      - /data/traefik/ssl/$TRAEFIK_DOMAIN.key:/certs/key.pem
+      - /data/mailu/certs:/certs
+
+This works, because we set ``TLS_FLAVOR=mail``, which picks up the key-certificate pair (e.g., ``cert.pem`` and ``key.pem``) from the certs folder in the root path (``/certs/``).
 
 .. _`Traefik`: https://traefik.io/
 

@@ -71,13 +71,19 @@ We thank you for your understanding and patience.
 I would like to donate (for a feature)
 ``````````````````````````````````````
 
-Donations are welcome at the `patreon`_ account of the project lead. It will be used to pay
-for infra structure and project related costs. If there are leftovers, it will be distributed
-among the developers.
+We maintain a `Communtity Bridge`_ project through which you can donate.
+This budget will be used to pay for development of features, mentorship and hopefully future events.
+Contributing companies or individuals can be paid from this budget to support their development efforts.
 
-It is not yet possible to pay for a specific feature. We don't have
-any bounty system implemented. Feel free to come with suggestions in
-our ongoing `project management`_ discussion issue.
+We are also looking into GitHub's integrated sponorship program for individual contributors.
+Once those become available, we will add them to the project.
+
+Please click the |sponsor| button on top of our GitHub Page for current possibilities.
+
+.. |sponsor| image:: assets/sponsor-button.png
+  :height: 1.2em
+  :alt: sponsor
+  :target: `GitHub`_
 
 
 .. _`Matrix`: https://matrix.to/#/#mailu:tedomum.net
@@ -85,8 +91,8 @@ our ongoing `project management`_ discussion issue.
 .. _`new issue`: https://github.com/Mailu/Mailu/issues/new
 .. _`Enhancement issues`: https://github.com/Mailu/Mailu/issues?q=is%3Aissue+is%3Aopen+label%3Atype%2Fenhancement
 .. _`Feature request issues`: https://github.com/Mailu/Mailu/issues?q=is%3Aopen+is%3Aissue+label%3Atype%2Ffeature
-.. _`patreon`: https://patreon.com/kaiyou
-.. _`project management`: https://github.com/Mailu/Mailu/issues/508
+.. _`GitHub`: https://github.com/Mailu/Mailu
+.. _`Communtity Bridge`: https://funding.communitybridge.org/projects/mailu
 
 Deployment related
 ------------------
@@ -242,17 +248,44 @@ Postfix, Dovecot, Nginx and Rspamd support overriding configuration files. Overr
 ``$ROOT/overrides``. Please refer to the official documentation of those programs for the
 correct syntax. The following file names will be taken as override configuration:
 
-- `Postfix`_ - ``postfix.cf``;
-- `Dovecot`_ - ``dovecot.conf``;
-- `Nginx`_ - All ``*.conf`` files in the ``nginx`` sub-directory.
+- `Postfix`_ - ``postfix.cf`` in postfix sub-directory;
+- `Dovecot`_ - ``dovecot.conf`` in dovecot sub-directory;
+- `Nginx`_ - All ``*.conf`` files in the ``nginx`` sub-directory;
 - `Rspamd`_ - All files in the ``rspamd`` sub-directory.
 
 *Issue reference:* `206`_.
 
-I want to integrate Nextcloud with Mailu
-````````````````````````````````````````
+I want to integrate Nextcloud 15 (and newer) with Mailu
+```````````````````````````````````````````````````````
 
-First of all you have to install dependencies required to authenticate users via imap in Nextcloud
+1. Enable External user support from Nextcloud Apps interface
+
+2. Configure additional user backends in Nextcloud’s configuration config/config.php using the following syntax if you use at least Nextcloud 15.
+
+.. code-block:: bash
+
+  <?php
+
+  /** Use this for Nextcloud 15 and newer **/
+  'user_backends' => array(
+      array(
+          'class' => 'OC_User_IMAP',
+          'arguments' => array(
+            '127.0.0.1', 993, 'ssl', 'example.com', true, false
+        ),
+      ),
+  ),
+  
+
+If a domain name (e.g. example.com) is specified, then this makes sure that only users from this domain will be allowed to login.
+After successfull login the domain part will be striped and the rest used as username in Nextcloud. e.g. 'username@example.com' will be 'username' in Nextcloud. Disable this behaviour by changing true (the fifth parameter) to false. 
+
+*Issue reference:* `575`_.
+
+I want to integrate Nextcloud 14 (and older) with Mailu
+```````````````````````````````````````````````````````
+
+1. Install dependencies required to authenticate users via imap in Nextcloud
 
 .. code-block:: bash
 
@@ -262,14 +295,15 @@ First of all you have to install dependencies required to authenticate users via
    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
    && docker-php-ext-install imap
 
-Next, you have to enable External user support from Nextcloud Apps interface
+2. Enable External user support from Nextcloud Apps interface
 
-In the end you need to configure additional user backends in Nextcloud’s configuration config/config.php using the following syntax:
+3. Configure additional user backends in Nextcloud’s configuration config/config.php using the following syntax for Nextcloud 14 (and below):
 
 .. code-block:: bash
 
   <?php
 
+  /** Use this for Nextcloud 14 and older **/
   'user_backends' => array(
       array(
           'class' => 'OC_User_IMAP',
@@ -280,12 +314,12 @@ In the end you need to configure additional user backends in Nextcloud’s confi
   ),
 
 If a domain name (e.g. example.com) is specified, then this makes sure that only users from this domain will be allowed to login.
-After successfull login the domain part will be striped and the rest used as username in NextCloud. e.g. 'username@example.com' will be 'username' in NextCloud.
+After successfull login the domain part will be striped and the rest used as username in Nextcloud. e.g. 'username@example.com' will be 'username' in Nextcloud.
 
 *Issue reference:* `575`_.
 
 .. _`Postfix`: http://www.postfix.org/postconf.5.html
-.. _`Dovecot`: https://wiki.dovecot.org/ConfigFile
+.. _`Dovecot`: https://doc.dovecot.org/configuration_manual/config_file/config_file_syntax/
 .. _`NGINX`:   https://nginx.org/en/docs/
 .. _`Rspamd`:  https://www.rspamd.com/doc/configuration/index.html
 
@@ -318,6 +352,11 @@ down and up again. A container restart is not sufficient.
   docker-compose up -d
 
 *Issue reference:* `615`_.
+
+403 - Access Denied Errors
+---------------------------
+
+While this may be due to several issues, check to make sure your ``DOMAIN=`` entry is the **first** entry in your ``HOSTNAMES=``.
 
 TLS certificate issues
 ``````````````````````
@@ -404,8 +443,68 @@ down brute force attacks.
 We *do* provide a possibility to export the logs from the ``front`` service to the host.
 For this you need to set ``LOG_DRIVER=journald`` or ``syslog``, depending on the log
 manager of the host. You will need to setup the proper Regex in the Fail2Ban configuration.
-Be aware that webmail authentication appears to come from the Docker network,
-so don't ban those addresses!
+Below an example how to do so. Be aware that webmail authentication appears to come from the
+Docker network, so don't ban those addresses!
+
+Assuming you have a working Fail2Ban installation on the host running your Docker containers,
+follow these steps:
+
+1. In the mailu docker-compose set the logging driver of the front container to journald
+
+.. code-block:: bash
+
+  logging:
+    driver: journald
+
+2. Add the /etc/fail2ban/filter.d/bad-auth.conf
+
+.. code-block:: bash
+
+  # Fail2Ban configuration file
+  [Definition]
+  failregex = .* client login failed: .+ client:\ <HOST>
+  ignoreregex =
+
+3. Add the /etc/fail2ban/jail.d/bad-auth.conf
+
+.. code-block:: bash
+
+  [bad-auth]
+  enabled = true
+  filter = bad-auth
+  logpath = /var/log/messages
+  bantime = 604800
+  findtime = 300
+  maxretry = 10
+  action = docker-action
+
+The above will block flagged IPs for a week, you can of course change it to you needs.
+
+4. Add the /etc/fail2ban/action.d/docker-action.conf
+
+.. code-block:: bash
+
+  [Definition]
+  
+  actionstart = iptables -N f2b-bad-auth
+                iptables -A f2b-bad-auth -j RETURN
+                iptables -I FORWARD -p tcp -m multiport --dports 1:1024 -j f2b-bad-auth
+  
+  actionstop = iptables -D FORWARD -p tcp -m multiport --dports 1:1024 -j f2b-bad-auth
+               iptables -F f2b-bad-auth
+               iptables -X f2b-bad-auth
+  
+  actioncheck = iptables -n -L FORWARD | grep -q 'f2b-bad-auth[ \t]'
+  
+  actionban = iptables -I f2b-bad-auth 1 -s <ip> -j DROP
+  
+  actionunban = iptables -D f2b-bad-auth -s <ip> -j DROP
+
+5. Restart Fail2Ban
+
+.. code-block:: bash
+
+  sudo systemctl restart fail2ban
 
 *Issue reference:* `85`_, `116`_, `171`_, `584`_, `592`_.
 
@@ -433,20 +532,83 @@ In any case, using a dedicated DNS server will improve the performance of your m
 
 *Issue reference:* `206`_, `554`_, `681`_.
 
+Can I learn ham/spam messages from an already existing mailbox?
+```````````````````````````````````````````````````````````````
+Mailu is supporting automatic spam learning for messages moved to the Junk mailbox. Any email moved from the Junk Folder will learnt as ham. 
+
+If you already have an existing mailbox and want Mailu to learn them all as ham messages, you might run rspamc from within the dovecot container:
+
+.. code-block:: bash
+
+  rspamc -h antispam:11334 -P mailu -f 13 fuzzy_add /mail/user\@example.com/.Ham_Learn/cur/
+
+This should learn every file located in the ``Ham_Learn`` folder from user@example.com 
+
+Likewise, to lean all messages within the folder ``Spam_Learn`` as spam messages :
+
+.. code-block:: bash
+
+  rspamc -h antispam:11334 -P mailu -f 11 fuzzy_add /mail/user\@example.com/.Spam_Learn/cur/
+
+*Issue reference:* `1438`_.
+
 Is there a way to support more (older) ciphers?
 ```````````````````````````````````````````````
 
-See `How can I override settings?`_ .
-You will need to add the protocols you wish to support in an override for the ``front`` container (Nginx).
+You will need to rewrite the `tls.conf` template of the `front` container in `core/nginx`.
+
+You can set the protocols as follow:
 
 .. code-block:: bash
 
   ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
   ssl_ciphers <list of ciphers>;
 
-We **strongly** advice against downgrading the TLS version and ciphers!
+After applying the change, you will need to rebuild the image and use it in your deployment.
+
+We **strongly** advice against downgrading the TLS version and ciphers, please upgrade your client instead! We will not support a more standard way of setting this up.
 
 *Issue reference:* `363`_, `698`_.
+
+Why does Compose complain about the yaml syntax
+```````````````````````````````````````````````
+
+In many cases, Docker Compose will complain about the yaml syntax because it is too old. It is especially true if you installed Docker Compose as part of your GNU/Linux distribution package system.
+
+Unless your distribution has proper up-to-date packages for Compose, we strongly advise that you install it either:
+
+ - from the Docker-CE repositories along with Docker CE itself,
+ - from PyPI using `pip install docker-compose` or
+ - from Github by downloading it directly.
+
+Detailed instructions can be found at https://docs.docker.com/compose/install/
+
+*Issue reference:* `853`_.
+
+Why are still spam mails being discarded?
+`````````````````````````````````````````
+
+Disabling antispam in the user settings actually disables automatic classification of messages as spam and stops moving them to the `junk` folder. It does not stop spam scanning and filtering.
+
+Therefore, messages still get discarded if their spam score is so high that the antispam finds them unfit for distribution. Also, the antispam headers are still present in the message, so that mail clients can display it and classify based on it.
+
+*Issue reference:* `897`_.
+
+Why is SPF failing while properly setup?
+````````````````````````````````````````
+
+Very often, SPF failure is related to Mailu sending emails with a different IP address than the one configured in the env file.
+
+This is mostly due to using a separate IP address for Mailu and still having masquerading nat setup for Docker, which results in a different outbound IP address. You can simply check the email headers on the receiving side to confirm this.
+
+If you wish to explicitely nat Mailu outbound traffic, it is usually easy to source-nat outgoing SMTP traffic using iptables :
+
+```
+iptables -t nat -A POSTROUTING -o eth0 -p tcp --dport 25 -j SNAT --to <your mx ip>
+```
+
+*Issue reference:* `1090`_.
+
 
 .. _`troubleshooting tag`: https://github.com/Mailu/Mailu/issues?utf8=%E2%9C%93&q=label%3Afaq%2Ftroubleshooting
 .. _`85`: https://github.com/Mailu/Mailu/issues/85
@@ -463,7 +625,12 @@ We **strongly** advice against downgrading the TLS version and ciphers!
 .. _`615`: https://github.com/Mailu/Mailu/issues/615
 .. _`681`: https://github.com/Mailu/Mailu/pull/681
 .. _`698`: https://github.com/Mailu/Mailu/issues/698
+.. _`853`: https://github.com/Mailu/Mailu/issues/853
+.. _`897`: https://github.com/Mailu/Mailu/issues/897
+.. _`1090`: https://github.com/Mailu/Mailu/issues/1090
 .. _`unbound`: https://nlnetlabs.nl/projects/unbound/about/
+.. _`1438`: https://github.com/Mailu/Mailu/issues/1438
+
 
 A user gets ``Sender address rejected: Access denied. Please check the`` ``message recipient […] and try again`` even though the sender is legitimate?
 ``````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````
